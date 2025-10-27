@@ -20,11 +20,12 @@ import {
 import { Plus, Search, Tag, Edit, Trash2, X, Upload } from '@/components/lucide-shim';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import { db, storage } from '@/config/firebase';
 import Colors from '@/constants/colors';
 import { Brand } from '@/types';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export default function BrandsScreen() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -52,7 +53,10 @@ export default function BrandsScreen() {
     queryKey: ['brands'],
     queryFn: async () => {
       const snapshot = await getDocs(collection(db, 'brands'));
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Brand[];
+      return snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Brand[];
     },
   });
 
@@ -109,16 +113,19 @@ export default function BrandsScreen() {
 
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
     if (permissionResult.granted === false) {
       Alert.alert('خطأ - Error', 'يجب السماح بالوصول للصور - Permission to access photos is required');
       return;
     }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images' as any,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
+
     if (!result.canceled && result.assets[0]) {
       await uploadImage(result.assets[0].uri);
     }
@@ -127,25 +134,15 @@ export default function BrandsScreen() {
   const uploadImage = async (uri: string) => {
     setUploading(true);
     try {
-      const response = await fetch(uri);
-      if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
-
-      // ✅ استخدم Uint8Array بدل Blob
-      const arrayBuffer = await response.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-
-      const filename = `brands/${Date.now()}.jpg`;
-      const storageRef = ref(storage, filename);
-
-      await new Promise<void>((resolve, reject) => {
-        const task = uploadBytesResumable(storageRef, bytes, {
-          contentType: 'image/jpeg',
-          cacheControl: 'public,max-age=31536000',
-        });
-        task.on('state_changed', null, reject, () => resolve());
-      });
-
+      console.log('[Upload] Reading file as base64...');
+const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+console.log('[Upload] Base64 length:', base64.length);
+await uploadString(storageRef, base64, 'base64', {
+  contentType: 'image/jpeg',
+  cacheControl: 'public,max-age=31536000',
+});
       const downloadURL = await getDownloadURL(storageRef);
+      
       setFormData((prev) => ({
         ...prev,
         logo: downloadURL,
@@ -184,6 +181,7 @@ export default function BrandsScreen() {
       Alert.alert('خطأ - Error', 'يرجى ملء جميع الحقول المطلوبة - Please fill all required fields');
       return;
     }
+
     if (editingBrand) {
       updateBrandMutation.mutate({ id: editingBrand.id, data: formData });
     } else {
@@ -209,7 +207,11 @@ export default function BrandsScreen() {
   );
 
   const renderBrandItem = ({ item }: { item: Brand }) => (
-    <TouchableOpacity style={styles.brandCard} onPress={() => handleOpenModal(item)} activeOpacity={0.7}>
+    <TouchableOpacity 
+      style={styles.brandCard}
+      onPress={() => handleOpenModal(item)}
+      activeOpacity={0.7}
+    >
       {item.logo && item.logo.trim() !== '' ? (
         <Image source={{ uri: item.logo }} style={styles.brandLogo} />
       ) : (
@@ -227,10 +229,18 @@ export default function BrandsScreen() {
         )}
       </View>
       <View style={styles.brandActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleOpenModal(item)} testID={`edit-brand-${item.id}`}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => handleOpenModal(item)}
+          testID={`edit-brand-${item.id}`}
+        >
           <Edit size={20} color={Colors.primary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item.id)} testID={`delete-brand-${item.id}`}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => handleDelete(item.id)}
+          testID={`delete-brand-${item.id}`}
+        >
           <Trash2 size={20} color={Colors.danger} />
         </TouchableOpacity>
       </View>
@@ -261,7 +271,9 @@ export default function BrandsScreen() {
           renderItem={renderBrandItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Tag size={64} color={Colors.textLight} />
@@ -271,12 +283,24 @@ export default function BrandsScreen() {
         />
       )}
 
-      <TouchableOpacity style={styles.fab} onPress={() => handleOpenModal()} testID="add-brand-button">
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => handleOpenModal()}
+        testID="add-brand-button"
+      >
         <Plus size={24} color={Colors.white} />
       </TouchableOpacity>
 
-      <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
@@ -287,19 +311,31 @@ export default function BrandsScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <ScrollView 
+              style={styles.modalBody} 
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.formGroup}>
                 <Text style={styles.label}>الشعار - Logo</Text>
                 <View style={styles.logoContainer}>
                   {formData.logo && formData.logo.trim() !== '' ? (
                     <View style={styles.logoWrapper}>
                       <Image source={{ uri: formData.logo }} style={styles.uploadedLogo} />
-                      <TouchableOpacity style={styles.removeLogoButton} onPress={() => setFormData({ ...formData, logo: '' })}>
+                      <TouchableOpacity
+                        style={styles.removeLogoButton}
+                        onPress={() => setFormData({ ...formData, logo: '' })}
+                      >
                         <X size={16} color={Colors.white} />
                       </TouchableOpacity>
                     </View>
                   ) : (
-                    <TouchableOpacity style={styles.uploadButton} onPress={pickImage} disabled={uploading} testID="upload-logo-button">
+                    <TouchableOpacity
+                      style={styles.uploadButton}
+                      onPress={pickImage}
+                      disabled={uploading}
+                      testID="upload-logo-button"
+                    >
                       {uploading ? (
                         <ActivityIndicator size="small" color={Colors.primary} />
                       ) : (
@@ -362,7 +398,10 @@ export default function BrandsScreen() {
               </View>
 
               <View style={styles.modalFooter}>
-                <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => setModalVisible(false)}>
+                <TouchableOpacity
+                  style={[styles.button, styles.cancelButton]}
+                  onPress={() => setModalVisible(false)}
+                >
                   <Text style={styles.cancelButtonText}>إلغاء - Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -374,7 +413,9 @@ export default function BrandsScreen() {
                   {addBrandMutation.isPending || updateBrandMutation.isPending ? (
                     <ActivityIndicator size="small" color={Colors.white} />
                   ) : (
-                    <Text style={styles.saveButtonText}>{editingBrand ? 'تحديث - Update' : 'إضافة - Add'}</Text>
+                    <Text style={styles.saveButtonText}>
+                      {editingBrand ? 'تحديث - Update' : 'إضافة - Add'}
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -387,7 +428,10 @@ export default function BrandsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
   searchContainer: {
     flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
     alignItems: 'center',
@@ -397,10 +441,25 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     height: 48,
   },
-  searchIcon: { marginRight: I18nManager.isRTL ? 0 : 8, marginLeft: I18nManager.isRTL ? 8 : 0 },
-  searchInput: { flex: 1, fontSize: 16, color: Colors.text, textAlign: I18nManager.isRTL ? 'right' : 'left' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  listContent: { padding: 16, paddingBottom: 80 },
+  searchIcon: {
+    marginRight: I18nManager.isRTL ? 0 : 8,
+    marginLeft: I18nManager.isRTL ? 8 : 0,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: Colors.text,
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 80,
+  },
   brandCard: {
     flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
     backgroundColor: Colors.card,
@@ -431,15 +490,51 @@ const styles = StyleSheet.create({
     marginRight: I18nManager.isRTL ? 0 : 12,
     marginLeft: I18nManager.isRTL ? 12 : 0,
   },
-  brandInfo: { flex: 1 },
-  brandName: { fontSize: 16, fontWeight: '600' as const, color: Colors.text, marginBottom: 2, textAlign: I18nManager.isRTL ? 'right' : 'left' },
-  brandNameAr: { fontSize: 14, color: Colors.textSecondary, marginBottom: 4, textAlign: I18nManager.isRTL ? 'right' : 'left' },
-  brandDescription: { fontSize: 13, color: Colors.textLight, textAlign: I18nManager.isRTL ? 'right' : 'left' },
-  brandActions: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', gap: 8 },
-  actionButton: { width: 36, height: 36, borderRadius: 8, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center' },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 64 },
-  emptyText: { fontSize: 16, color: Colors.textLight, textAlign: 'center', marginTop: 16 },
-
+  brandInfo: {
+    flex: 1,
+  },
+  brandName: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 2,
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
+  },
+  brandNameAr: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
+  },
+  brandDescription: {
+    fontSize: 13,
+    color: Colors.textLight,
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
+  },
+  brandActions: {
+    flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+    gap: 8,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 64,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.textLight,
+    textAlign: 'center',
+    marginTop: 16,
+  },
   fab: {
     position: 'absolute',
     right: I18nManager.isRTL ? undefined : 16,
@@ -457,9 +552,18 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-
-  modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%', paddingTop: 20 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: Colors.overlay,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    paddingTop: 20,
+  },
   modalHeader: {
     flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
     justifyContent: 'space-between',
@@ -469,16 +573,46 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  modalTitle: { fontSize: 20, fontWeight: '700' as const, color: Colors.text },
-  modalBody: { padding: 20 },
-  formGroup: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '600' as const, color: Colors.text, marginBottom: 8, textAlign: I18nManager.isRTL ? 'right' : 'left' },
-
-  logoContainer: { alignItems: 'center' },
-  logoWrapper: { position: 'relative' },
-  uploadedLogo: { width: 120, height: 120, borderRadius: 12 },
-  removeLogoButton: { position: 'absolute', top: -8, right: -8, width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.danger, justifyContent: 'center', alignItems: 'center' },
-
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  modalBody: {
+    padding: 20,
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 8,
+    textAlign: I18nManager.isRTL ? 'right' : 'left',
+  },
+  logoContainer: {
+    alignItems: 'center',
+  },
+  logoWrapper: {
+    position: 'relative',
+  },
+  uploadedLogo: {
+    width: 120,
+    height: 120,
+    borderRadius: 12,
+  },
+  removeLogoButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.danger,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   uploadButton: {
     width: 120,
     height: 120,
@@ -491,8 +625,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     gap: 8,
   },
-  uploadText: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center' },
-
+  uploadText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
   textInput: {
     backgroundColor: Colors.background,
     borderRadius: 8,
@@ -503,12 +640,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  textArea: { height: 100, textAlignVertical: 'top' },
-
-  modalFooter: { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row', gap: 12, marginTop: 24, paddingBottom: 20 },
-  button: { flex: 1, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  cancelButton: { backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border },
-  cancelButtonText: { fontSize: 16, fontWeight: '600' as const, color: Colors.text },
-  saveButton: { backgroundColor: Colors.primary },
-  saveButtonText: { fontSize: 16, fontWeight: '600' as const, color: Colors.white },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  modalFooter: {
+    flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
+    gap: 12,
+    marginTop: 24,
+    paddingBottom: 20,
+  },
+  button: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.text,
+  },
+  saveButton: {
+    backgroundColor: Colors.primary,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.white,
+  },
 });

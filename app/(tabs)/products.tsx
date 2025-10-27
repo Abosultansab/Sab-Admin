@@ -20,12 +20,13 @@ import { Plus, Search, Package, Edit, Trash2, X, Upload, ChevronDown, Palette } 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db, storage } from '@/config/firebase';
 import Colors from '@/constants/colors';
 import { Product, Category, Brand, ProductSize, ProductColor } from '@/types';
 import { PRODUCT_COLORS } from '@/constants/productColors';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export default function ProductsScreen() {
   const router = useRouter();
@@ -52,8 +53,6 @@ export default function ProductsScreen() {
     deliveryTime: '',
     rate: 0,
   });
-    task.on('state_changed', null, reject, () => resolve());
-});
   const [uploading, setUploading] = useState<boolean>(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string>('');
   const [showCategoryPicker, setShowCategoryPicker] = useState<boolean>(false);
@@ -78,8 +77,6 @@ export default function ProductsScreen() {
     queryFn: () => [] as Product[],
     staleTime: Infinity,
   });
-    task.on('state_changed', null, reject, () => resolve());
-});
 
   React.useEffect(() => {
     console.log('[ProductsScreen] Setting up real-time listener for products');
@@ -112,8 +109,6 @@ export default function ProductsScreen() {
     queryFn: () => [] as Category[],
     staleTime: Infinity,
   });
-    task.on('state_changed', null, reject, () => resolve());
-});
 
   React.useEffect(() => {
     console.log('[ProductsScreen] Setting up real-time listener for categories');
@@ -151,8 +146,6 @@ export default function ProductsScreen() {
     queryFn: () => [] as Brand[],
     staleTime: Infinity,
   });
-    task.on('state_changed', null, reject, () => resolve());
-});
 
   React.useEffect(() => {
     console.log('[ProductsScreen] Setting up real-time listener for brands');
@@ -191,16 +184,12 @@ export default function ProductsScreen() {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-    task.on('state_changed', null, reject, () => resolve());
-});
       
       console.log('[ProductsScreen] Product added with ID:', docRef.id);
       return docRef.id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-    task.on('state_changed', null, reject, () => resolve());
-});
       setModalVisible(false);
       resetForm();
       Alert.alert('نجح - Success', 'تم إضافة المنتج بنجاح - Product added successfully');
@@ -210,8 +199,6 @@ export default function ProductsScreen() {
       Alert.alert('خطأ - Error', error.message);
     },
   });
-    task.on('state_changed', null, reject, () => resolve());
-});
 
   const updateProductMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Product> }) => {
@@ -219,13 +206,9 @@ export default function ProductsScreen() {
         ...data,
         updatedAt: new Date(),
       });
-    task.on('state_changed', null, reject, () => resolve());
-});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-    task.on('state_changed', null, reject, () => resolve());
-});
       setModalVisible(false);
       resetForm();
       Alert.alert('نجح - Success', 'تم تحديث المنتج بنجاح - Product updated successfully');
@@ -235,8 +218,6 @@ export default function ProductsScreen() {
       Alert.alert('خطأ - Error', error.message);
     },
   });
-    task.on('state_changed', null, reject, () => resolve());
-});
 
   const deleteProductMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -244,8 +225,6 @@ export default function ProductsScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-    task.on('state_changed', null, reject, () => resolve());
-});
       Alert.alert('نجح - Success', 'تم حذف المنتج بنجاح - Product deleted successfully');
     },
     onError: (error: any) => {
@@ -253,8 +232,6 @@ export default function ProductsScreen() {
       Alert.alert('خطأ - Error', error.message);
     },
   });
-    task.on('state_changed', null, reject, () => resolve());
-});
 
   const pickImage = async () => {
     try {
@@ -272,8 +249,6 @@ export default function ProductsScreen() {
         quality: 0.8,
         allowsMultipleSelection: false,
       });
-    task.on('state_changed', null, reject, () => resolve());
-});
 
       if (!result.canceled && result.assets[0]) {
         setSelectedImageUri(result.assets[0].uri);
@@ -299,28 +274,17 @@ export default function ProductsScreen() {
       }
 
       const timestamp = Date.now();
-      const extension = uri.split('.').pop()?.toLowerCase() || 'jpg';
-      const filename = `products/${timestamp}_product.${extension}`;
+      // extension forced to jpg || 'jpg';
+      const filename = `products/${timestamp}_product.jpg`;
       const storageRef = ref(storage, filename);
       
       console.log('[ProductsScreen] Uploading to path:', filename);
-      console.log('[ProductsScreen] Fetching image data...');
-      
-      const response = await fetch(uri);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
-      }
-      
-      const arrayBuffer = await response.arrayBuffer();
-const bytes = new Uint8Array(arrayBuffer);
-      console.log('[ProductsScreen] Blob created:', blob.size, 'bytes, type:', blob.type);
-      
-      console.log('[ProductsScreen] Starting upload to Firebase Storage...');
-      await new Promise<void>((resolve, reject) => {
-    const task = uploadBytesResumable(storageRef, bytes, {
-        contentType: blob.type || 'image/jpeg',
-      });
-    task.on('state_changed', null, reject, () => resolve());
+      console.log('[Upload] Reading file as base64...');
+const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+console.log('[Upload] Base64 length:', base64.length);
+await uploadString(storageRef, base64, 'base64', {
+  contentType: 'image/jpeg',
+  cacheControl: 'public,max-age=31536000',
 });
       console.log('[ProductsScreen] Upload complete, getting download URL...');
       
@@ -342,8 +306,6 @@ const bytes = new Uint8Array(arrayBuffer);
         message: error.message,
         stack: error.stack,
       });
-    task.on('state_changed', null, reject, () => resolve());
-});
       
       if (error.serverResponse) {
         console.error('[ProductsScreen] Server response:', error.serverResponse);
@@ -401,8 +363,6 @@ const bytes = new Uint8Array(arrayBuffer);
       deliveryTime: '',
       rate: 0,
     });
-    task.on('state_changed', null, reject, () => resolve());
-});
     setEditingProduct(null);
   };
 
@@ -434,8 +394,6 @@ const bytes = new Uint8Array(arrayBuffer);
 
     if (editingProduct) {
       updateProductMutation.mutate({ id: editingProduct.id, data: formData });
-    task.on('state_changed', null, reject, () => resolve());
-});
     } else {
       addProductMutation.mutate(formData);
     }
@@ -461,8 +419,6 @@ const bytes = new Uint8Array(arrayBuffer);
   const mainCategories = categoriesQuery.data || [];
   const [subCategories, setSubCategories] = React.useState<any[]>([]);
   const [allSubCategoriesMap, setAllSubCategoriesMap] = React.useState<Record<string, any[]>>({});
-    task.on('state_changed', null, reject, () => resolve());
-});
 
   React.useEffect(() => {
     const categoryId = formData.categoryMain;
@@ -740,8 +696,6 @@ const bytes = new Uint8Array(arrayBuffer);
                           style={styles.pickerItem}
                           onPress={() => {
                             setFormData({ ...formData, currency: currency as 'USD' | 'LBP' });
-    task.on('state_changed', null, reject, () => resolve());
-});
                             setShowCurrencyPicker(false);
                           }}
                         >
@@ -785,8 +739,6 @@ const bytes = new Uint8Array(arrayBuffer);
                         style={styles.pickerItem}
                         onPress={() => {
                           setFormData({ ...formData, categoryMain: category.id, categorySub: '' });
-    task.on('state_changed', null, reject, () => resolve());
-});
                           setShowCategoryPicker(false);
                         }}
                       >
@@ -823,8 +775,6 @@ const bytes = new Uint8Array(arrayBuffer);
                           style={styles.pickerItem}
                           onPress={() => {
                             setFormData({ ...formData, categorySub: category.id });
-    task.on('state_changed', null, reject, () => resolve());
-});
                             setShowSubCategoryPicker(false);
                           }}
                         >
@@ -856,8 +806,6 @@ const bytes = new Uint8Array(arrayBuffer);
                         style={styles.pickerItem}
                         onPress={() => {
                           setFormData({ ...formData, brandId: brand.id });
-    task.on('state_changed', null, reject, () => resolve());
-});
                           setShowBrandPicker(false);
                         }}
                       >
@@ -882,12 +830,8 @@ const bytes = new Uint8Array(arrayBuffer);
                         const currentSizes = formData.sizes || [];
                         if (currentSizes.includes(size)) {
                           setFormData({ ...formData, sizes: currentSizes.filter((s) => s !== size) });
-    task.on('state_changed', null, reject, () => resolve());
-});
                         } else {
                           setFormData({ ...formData, sizes: [...currentSizes, size] });
-    task.on('state_changed', null, reject, () => resolve());
-});
                         }
                       }}
                       testID={`size-${size}`}
@@ -913,8 +857,6 @@ const bytes = new Uint8Array(arrayBuffer);
                     const callbackId = `colorCallback_${Date.now()}`;
                     (global as any)[callbackId] = (selectedColors: string[]) => {
                       setFormData({ ...formData, colors: selectedColors });
-    task.on('state_changed', null, reject, () => resolve());
-});
                       delete (global as any)[callbackId];
                     };
                     router.push({
@@ -924,8 +866,6 @@ const bytes = new Uint8Array(arrayBuffer);
                         onSelect: callbackId,
                       },
                     });
-    task.on('state_changed', null, reject, () => resolve());
-});
                   }}
                   testID="choose-color-button"
                 >
@@ -980,8 +920,6 @@ const bytes = new Uint8Array(arrayBuffer);
                   onChangeText={(text) => {
                     const rate = parseFloat(text) || 0;
                     setFormData({ ...formData, rate: Math.min(5, Math.max(0, rate)) });
-    task.on('state_changed', null, reject, () => resolve());
-});
                   }}
                   placeholder="0.0"
                   keyboardType="decimal-pad"
@@ -1571,6 +1509,4 @@ const styles = StyleSheet.create({
     marginLeft: I18nManager.isRTL ? 0 : 4,
     marginRight: I18nManager.isRTL ? 4 : 0,
   },
-});
-    task.on('state_changed', null, reject, () => resolve());
 });

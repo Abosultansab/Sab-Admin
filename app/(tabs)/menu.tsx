@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { storage, db } from '@/config/firebase';
@@ -32,6 +32,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import * as FileSystem from 'expo-file-system/legacy';
 
 interface MenuItem {
   title: string;
@@ -69,8 +70,6 @@ export default function MenuScreen() {
         aspect: [1, 1],
         quality: 0.7,
       });
-    task.on('state_changed', null, reject, () => resolve());
-});
 
       if (!result.canceled && result.assets[0]) {
         await uploadProfileImage(result.assets[0].uri);
@@ -86,26 +85,22 @@ export default function MenuScreen() {
     
     setUploadingImage(true);
     try {
-      const response = await fetch(uri);
-      const arrayBuffer = await response.arrayBuffer();
-const bytes = new Uint8Array(arrayBuffer);
-      
-      const storageRef = ref(storage, `profile-images/${user.uid}/${Date.now()}.jpg`);
-      await new Promise<void>((resolve, reject) => {
-    const task = uploadBytesResumable(storageRef, bytes);
+      console.log('[Upload] Reading file as base64...');
+const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+console.log('[Upload] Base64 length:', base64.length);
+await uploadString(storageRef, base64, 'base64', {
+  contentType: 'image/jpeg',
+  cacheControl: 'public,max-age=31536000',
+});
       
       const downloadURL = await getDownloadURL(storageRef);
       setProfileImage(downloadURL);
       
       await updateProfile(user as any, { photoURL: downloadURL });
-    task.on('state_changed', null, reject, () => resolve());
-});
       await updateDoc(doc(db, 'admins', user.uid), {
         photoURL: downloadURL,
         updatedAt: new Date(),
       });
-    task.on('state_changed', null, reject, () => resolve());
-});
       
       Alert.alert(
         'نجح - Success',
@@ -125,14 +120,10 @@ const bytes = new Uint8Array(arrayBuffer);
     setSavingProfile(true);
     try {
       await updateProfile(user as any, { displayName: editedName });
-    task.on('state_changed', null, reject, () => resolve());
-});
       await updateDoc(doc(db, 'admins', user.uid), {
         displayName: editedName,
         updatedAt: new Date(),
       });
-    task.on('state_changed', null, reject, () => resolve());
-});
       
       setShowProfileModal(false);
       Alert.alert(
@@ -217,8 +208,6 @@ const bytes = new Uint8Array(arrayBuffer);
                 'تعذر فتح واتساب - Unable to open WhatsApp'
               );
             });
-    task.on('state_changed', null, reject, () => resolve());
-});
           },
         },
       ],
@@ -569,6 +558,4 @@ const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: I18nManager.isRTL ? 'right' : 'left',
   },
-});
-    task.on('state_changed', null, reject, () => resolve());
 });
