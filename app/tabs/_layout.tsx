@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { LayoutDashboard, Shield, Menu } from 'lucide-react-native';
+import { LayoutDashboard, Shield, Menu } from '@/components/lucide-shim';
 import Colors from '@/constants/colors';
 
 export default function TabLayout() {
