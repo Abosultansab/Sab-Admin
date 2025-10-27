@@ -34,12 +34,6 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.SCHEDULE_EXACT_ALARM",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -87,7 +81,7 @@
         "origin": "https://rork.com/"
       },
       "eas": {
-        "projectId": "45db0288-203a-4779-8f16-858531d23684"
+        "projectId": "ec2610ef-9a44-4a1e-ab8f-9880be2d2798"
       }
     },
     "runtimeVersion": {
@@ -95,6 +89,7 @@
     },
     "updates": {
       "url": "https://u.expo.dev/45db0288-203a-4779-8f16-858531d23684"
-    }
+    },
+    "owner": "sultandeveloper"
   }
 }
