@@ -1,5 +1,6 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   signInWithEmailAndPassword, 
   signOut as firebaseSignOut,
@@ -19,6 +20,7 @@ interface AdminUser {
   email: string;
   displayName?: string;
   isAdmin: boolean;
+  pushToken?: string;
 }
 
 interface AuthContextType {
@@ -38,42 +40,58 @@ export const [AuthProvider, useAuth] = createContextHook<AuthContextType>(() => 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const restoreUser = async () => {
+      setLoading(true);
+      try {
+        const storedUser = await AsyncStorage.getItem('adminUser');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+      } catch (err) {
+        console.error('[AuthContext] Error restoring user from storage:', err);
+      }
+      setLoading(false);
+    };
+    restoreUser();
+
     console.log('[AuthContext] Setting up auth state listener');
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       console.log('[AuthContext] Auth state changed:', firebaseUser?.email);
-      
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'admins', firebaseUser.uid));
           const userData = userDoc.data();
-          
           if (userData && userData.isAdmin === true) {
             console.log('[AuthContext] Admin user verified');
-            setUser({
+            const adminUser: AdminUser = {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || userData.displayName,
               isAdmin: true,
-            });
+              pushToken: userData.pushToken,
+            };
+            setUser(adminUser);
+            await AsyncStorage.setItem('adminUser', JSON.stringify(adminUser));
           } else {
             console.log('[AuthContext] User is not an admin');
             setError('غير مصرح لك بالدخول - Unauthorized access');
             await firebaseSignOut(auth);
             setUser(null);
+            await AsyncStorage.removeItem('adminUser');
           }
         } catch (err) {
           console.error('[AuthContext] Error fetching user data:', err);
           setError('حدث خطأ في التحقق من الصلاحيات - Error verifying permissions');
           setUser(null);
+          await AsyncStorage.removeItem('adminUser');
         }
       } else {
         console.log('[AuthContext] No user signed in');
         setUser(null);
+        await AsyncStorage.removeItem('adminUser');
       }
-      
       setLoading(false);
     });
-
     return () => {
       console.log('[AuthContext] Cleaning up auth listener');
       unsubscribe();
@@ -115,6 +133,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthContextType>(() => 
     try {
       await firebaseSignOut(auth);
       setUser(null);
+      await AsyncStorage.removeItem('adminUser');
       console.log('[AuthContext] Sign out successful');
     } catch (err: any) {
       console.error('[AuthContext] Sign out error:', err);

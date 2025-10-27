@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { storage, db } from '@/config/firebase';
@@ -69,6 +69,8 @@ export default function MenuScreen() {
         aspect: [1, 1],
         quality: 0.7,
       });
+    task.on('state_changed', null, reject, () => resolve());
+});
 
       if (!result.canceled && result.assets[0]) {
         await uploadProfileImage(result.assets[0].uri);
@@ -85,19 +87,25 @@ export default function MenuScreen() {
     setUploadingImage(true);
     try {
       const response = await fetch(uri);
-      const blob = await response.blob();
+      const arrayBuffer = await response.arrayBuffer();
+const bytes = new Uint8Array(arrayBuffer);
       
       const storageRef = ref(storage, `profile-images/${user.uid}/${Date.now()}.jpg`);
-      await uploadBytes(storageRef, blob);
+      await new Promise<void>((resolve, reject) => {
+    const task = uploadBytesResumable(storageRef, bytes);
       
       const downloadURL = await getDownloadURL(storageRef);
       setProfileImage(downloadURL);
       
       await updateProfile(user as any, { photoURL: downloadURL });
+    task.on('state_changed', null, reject, () => resolve());
+});
       await updateDoc(doc(db, 'admins', user.uid), {
         photoURL: downloadURL,
         updatedAt: new Date(),
       });
+    task.on('state_changed', null, reject, () => resolve());
+});
       
       Alert.alert(
         'نجح - Success',
@@ -117,10 +125,14 @@ export default function MenuScreen() {
     setSavingProfile(true);
     try {
       await updateProfile(user as any, { displayName: editedName });
+    task.on('state_changed', null, reject, () => resolve());
+});
       await updateDoc(doc(db, 'admins', user.uid), {
         displayName: editedName,
         updatedAt: new Date(),
       });
+    task.on('state_changed', null, reject, () => resolve());
+});
       
       setShowProfileModal(false);
       Alert.alert(
@@ -205,6 +217,8 @@ export default function MenuScreen() {
                 'تعذر فتح واتساب - Unable to open WhatsApp'
               );
             });
+    task.on('state_changed', null, reject, () => resolve());
+});
           },
         },
       ],
@@ -555,4 +569,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: I18nManager.isRTL ? 'right' : 'left',
   },
+});
+    task.on('state_changed', null, reject, () => resolve());
 });

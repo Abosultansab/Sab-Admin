@@ -20,9 +20,8 @@ import { Plus, Search, Package, Edit, Trash2, X, Upload, ChevronDown, Palette } 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { auth, db, storage } from '@/config/firebase';
 import Colors from '@/constants/colors';
 import { Product, Category, Brand, ProductSize, ProductColor } from '@/types';
@@ -53,6 +52,8 @@ export default function ProductsScreen() {
     deliveryTime: '',
     rate: 0,
   });
+    task.on('state_changed', null, reject, () => resolve());
+});
   const [uploading, setUploading] = useState<boolean>(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string>('');
   const [showCategoryPicker, setShowCategoryPicker] = useState<boolean>(false);
@@ -77,6 +78,8 @@ export default function ProductsScreen() {
     queryFn: () => [] as Product[],
     staleTime: Infinity,
   });
+    task.on('state_changed', null, reject, () => resolve());
+});
 
   React.useEffect(() => {
     console.log('[ProductsScreen] Setting up real-time listener for products');
@@ -109,6 +112,8 @@ export default function ProductsScreen() {
     queryFn: () => [] as Category[],
     staleTime: Infinity,
   });
+    task.on('state_changed', null, reject, () => resolve());
+});
 
   React.useEffect(() => {
     console.log('[ProductsScreen] Setting up real-time listener for categories');
@@ -146,6 +151,8 @@ export default function ProductsScreen() {
     queryFn: () => [] as Brand[],
     staleTime: Infinity,
   });
+    task.on('state_changed', null, reject, () => resolve());
+});
 
   React.useEffect(() => {
     console.log('[ProductsScreen] Setting up real-time listener for brands');
@@ -184,12 +191,16 @@ export default function ProductsScreen() {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+    task.on('state_changed', null, reject, () => resolve());
+});
       
       console.log('[ProductsScreen] Product added with ID:', docRef.id);
       return docRef.id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+    task.on('state_changed', null, reject, () => resolve());
+});
       setModalVisible(false);
       resetForm();
       Alert.alert('نجح - Success', 'تم إضافة المنتج بنجاح - Product added successfully');
@@ -199,6 +210,8 @@ export default function ProductsScreen() {
       Alert.alert('خطأ - Error', error.message);
     },
   });
+    task.on('state_changed', null, reject, () => resolve());
+});
 
   const updateProductMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Product> }) => {
@@ -206,9 +219,13 @@ export default function ProductsScreen() {
         ...data,
         updatedAt: new Date(),
       });
+    task.on('state_changed', null, reject, () => resolve());
+});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+    task.on('state_changed', null, reject, () => resolve());
+});
       setModalVisible(false);
       resetForm();
       Alert.alert('نجح - Success', 'تم تحديث المنتج بنجاح - Product updated successfully');
@@ -218,6 +235,8 @@ export default function ProductsScreen() {
       Alert.alert('خطأ - Error', error.message);
     },
   });
+    task.on('state_changed', null, reject, () => resolve());
+});
 
   const deleteProductMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -225,6 +244,8 @@ export default function ProductsScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+    task.on('state_changed', null, reject, () => resolve());
+});
       Alert.alert('نجح - Success', 'تم حذف المنتج بنجاح - Product deleted successfully');
     },
     onError: (error: any) => {
@@ -232,6 +253,8 @@ export default function ProductsScreen() {
       Alert.alert('خطأ - Error', error.message);
     },
   });
+    task.on('state_changed', null, reject, () => resolve());
+});
 
   const pickImage = async () => {
     try {
@@ -249,6 +272,8 @@ export default function ProductsScreen() {
         quality: 0.8,
         allowsMultipleSelection: false,
       });
+    task.on('state_changed', null, reject, () => resolve());
+});
 
       if (!result.canceled && result.assets[0]) {
         setSelectedImageUri(result.assets[0].uri);
@@ -267,14 +292,9 @@ export default function ProductsScreen() {
     console.log('[ProductsScreen] Current user:', auth.currentUser?.uid);
     console.log('[ProductsScreen] Storage bucket:', storage.app.options.storageBucket);
     console.log('[ProductsScreen] Platform:', Platform.OS);
-
+    
     try {
-      // Extra logging for debugging
-      const currentUser = auth.currentUser;
-      console.log('[ProductsScreen] Current user:', currentUser ? currentUser.uid : 'No user');
-      console.log('[ProductsScreen] Image URI:', uri);
-
-      if (!currentUser) {
+      if (!auth.currentUser) {
         throw new Error('يجب تسجيل الدخول أولاً - You must be signed in to upload images');
       }
 
@@ -282,84 +302,59 @@ export default function ProductsScreen() {
       const extension = uri.split('.').pop()?.toLowerCase() || 'jpg';
       const filename = `products/${timestamp}_product.${extension}`;
       const storageRef = ref(storage, filename);
-
+      
       console.log('[ProductsScreen] Uploading to path:', filename);
       console.log('[ProductsScreen] Fetching image data...');
-
-      // Use Expo FileSystem to read the file and convert to Blob
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      if (!fileInfo.exists) {
-        throw new Error('File does not exist at URI: ' + uri);
+      
+      const response = await fetch(uri);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
       }
-      // Read file as base64
-  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
-      // Convert base64 to binary
-      const byteCharacters = atob(base64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      // Guess MIME type from extension
-      let mimeType = 'image/jpeg';
-      if (uri.endsWith('.png')) mimeType = 'image/png';
-      else if (uri.endsWith('.jpg') || uri.endsWith('.jpeg')) mimeType = 'image/jpeg';
-      else if (uri.endsWith('.webp')) mimeType = 'image/webp';
-      // Create Blob
-      const blob = new Blob([byteArray], { type: mimeType });
+      
+      const arrayBuffer = await response.arrayBuffer();
+const bytes = new Uint8Array(arrayBuffer);
       console.log('[ProductsScreen] Blob created:', blob.size, 'bytes, type:', blob.type);
-
-      // Show blob details in alert if needed
-      if (!blob.type || !blob.type.startsWith('image/')) {
-        Alert.alert('خطأ - Error', `نوع الصورة غير مدعوم - Unsupported image type\nType: ${blob.type}`);
-        setUploading(false);
-        setSelectedImageUri('');
-        return;
-      }
-
-      // Check image size before uploading (5MB limit)
-      if (blob.size > 5 * 1024 * 1024) {
-        Alert.alert('خطأ - Error', `حجم الصورة أكبر من 5MB - Image size exceeds 5MB\nSize: ${blob.size}`);
-        setUploading(false);
-        setSelectedImageUri('');
-        return;
-      }
-
+      
       console.log('[ProductsScreen] Starting upload to Firebase Storage...');
-      await uploadBytes(storageRef, blob, {
+      await new Promise<void>((resolve, reject) => {
+    const task = uploadBytesResumable(storageRef, bytes, {
         contentType: blob.type || 'image/jpeg',
       });
+    task.on('state_changed', null, reject, () => resolve());
+});
       console.log('[ProductsScreen] Upload complete, getting download URL...');
-
+      
       const downloadURL = await getDownloadURL(storageRef);
       console.log('[ProductsScreen] Download URL obtained:', downloadURL);
-
+      
       setFormData((prev) => ({
         ...prev,
         images: [...(prev.images || []), downloadURL],
       }));
-
+      
       setSelectedImageUri('');
       Alert.alert('نجح - Success', 'تم رفع الصورة بنجاح - Image uploaded successfully');
     } catch (error: any) {
-      // Detailed error logging
       console.error('[ProductsScreen] Upload error:', error);
-      if (error && typeof error === 'object') {
-        Object.keys(error).forEach((key) => {
-          console.error(`[ProductsScreen] Error property: ${key} =`, error[key]);
-        });
+      console.error('[ProductsScreen] Error details:', {
+        name: error.name,
+        code: error.code,
+        message: error.message,
+        stack: error.stack,
+      });
+    task.on('state_changed', null, reject, () => resolve());
+});
+      
+      if (error.serverResponse) {
+        console.error('[ProductsScreen] Server response:', error.serverResponse);
       }
-      // Show extra debug info in the error dialog
-      const debugInfo = [
-        `User: ${auth.currentUser ? auth.currentUser.uid : 'No user'}`,
-        `Image URI: ${uri}`,
-        error.blob ? `Blob size: ${error.blob.size}` : '',
-        error.blob ? `Blob type: ${error.blob.type}` : '',
-      ].filter(Boolean).join('\n');
-
+      if (error.customData) {
+        console.error('[ProductsScreen] Custom data:', JSON.stringify(error.customData, null, 2));
+      }
+      
       let errorMessage = 'فشل رفع الصورة - Failed to upload image';
       let errorDetails = error.message;
-
+      
       if (error.code === 'storage/unauthorized') {
         errorMessage = 'ليس لديك صلاحية لرفع الصور';
         errorDetails = 'تأكد من:\n1. تسجيل دخولك كمسؤول\n2. تحديث قواعد Firebase Storage\n3. وجود مستندك في مجموعة admins';
@@ -370,10 +365,8 @@ export default function ProductsScreen() {
         errorMessage = 'خطأ غير معروف';
         errorDetails = 'الأسباب المحتملة:\n1. مشكلة في الاتصال\n2. الصورة تالفة أو بتنسيق غير مدعوم\n3. راجع قواعد Storage\n4. تأكد من وجود الإنترنت';
       }
-
-      // Show all error details in the alert for debugging
-      const debugDetails = `\n\n[Debug]\nName: ${error.name}\nCode: ${error.code}\nMessage: ${error.message}\nStack: ${error.stack}\n${debugInfo}`;
-      const fullMessage = errorDetails ? `${errorMessage}\n\n${errorDetails}${debugDetails}` : errorMessage;
+      
+      const fullMessage = errorDetails ? `${errorMessage}\n\n${errorDetails}` : errorMessage;
       Alert.alert('خطأ - Error', fullMessage);
     } finally {
       setUploading(false);
@@ -408,6 +401,8 @@ export default function ProductsScreen() {
       deliveryTime: '',
       rate: 0,
     });
+    task.on('state_changed', null, reject, () => resolve());
+});
     setEditingProduct(null);
   };
 
@@ -439,6 +434,8 @@ export default function ProductsScreen() {
 
     if (editingProduct) {
       updateProductMutation.mutate({ id: editingProduct.id, data: formData });
+    task.on('state_changed', null, reject, () => resolve());
+});
     } else {
       addProductMutation.mutate(formData);
     }
@@ -464,6 +461,8 @@ export default function ProductsScreen() {
   const mainCategories = categoriesQuery.data || [];
   const [subCategories, setSubCategories] = React.useState<any[]>([]);
   const [allSubCategoriesMap, setAllSubCategoriesMap] = React.useState<Record<string, any[]>>({});
+    task.on('state_changed', null, reject, () => resolve());
+});
 
   React.useEffect(() => {
     const categoryId = formData.categoryMain;
@@ -741,6 +740,8 @@ export default function ProductsScreen() {
                           style={styles.pickerItem}
                           onPress={() => {
                             setFormData({ ...formData, currency: currency as 'USD' | 'LBP' });
+    task.on('state_changed', null, reject, () => resolve());
+});
                             setShowCurrencyPicker(false);
                           }}
                         >
@@ -784,6 +785,8 @@ export default function ProductsScreen() {
                         style={styles.pickerItem}
                         onPress={() => {
                           setFormData({ ...formData, categoryMain: category.id, categorySub: '' });
+    task.on('state_changed', null, reject, () => resolve());
+});
                           setShowCategoryPicker(false);
                         }}
                       >
@@ -820,6 +823,8 @@ export default function ProductsScreen() {
                           style={styles.pickerItem}
                           onPress={() => {
                             setFormData({ ...formData, categorySub: category.id });
+    task.on('state_changed', null, reject, () => resolve());
+});
                             setShowSubCategoryPicker(false);
                           }}
                         >
@@ -851,6 +856,8 @@ export default function ProductsScreen() {
                         style={styles.pickerItem}
                         onPress={() => {
                           setFormData({ ...formData, brandId: brand.id });
+    task.on('state_changed', null, reject, () => resolve());
+});
                           setShowBrandPicker(false);
                         }}
                       >
@@ -875,8 +882,12 @@ export default function ProductsScreen() {
                         const currentSizes = formData.sizes || [];
                         if (currentSizes.includes(size)) {
                           setFormData({ ...formData, sizes: currentSizes.filter((s) => s !== size) });
+    task.on('state_changed', null, reject, () => resolve());
+});
                         } else {
                           setFormData({ ...formData, sizes: [...currentSizes, size] });
+    task.on('state_changed', null, reject, () => resolve());
+});
                         }
                       }}
                       testID={`size-${size}`}
@@ -902,6 +913,8 @@ export default function ProductsScreen() {
                     const callbackId = `colorCallback_${Date.now()}`;
                     (global as any)[callbackId] = (selectedColors: string[]) => {
                       setFormData({ ...formData, colors: selectedColors });
+    task.on('state_changed', null, reject, () => resolve());
+});
                       delete (global as any)[callbackId];
                     };
                     router.push({
@@ -911,6 +924,8 @@ export default function ProductsScreen() {
                         onSelect: callbackId,
                       },
                     });
+    task.on('state_changed', null, reject, () => resolve());
+});
                   }}
                   testID="choose-color-button"
                 >
@@ -965,6 +980,8 @@ export default function ProductsScreen() {
                   onChangeText={(text) => {
                     const rate = parseFloat(text) || 0;
                     setFormData({ ...formData, rate: Math.min(5, Math.max(0, rate)) });
+    task.on('state_changed', null, reject, () => resolve());
+});
                   }}
                   placeholder="0.0"
                   keyboardType="decimal-pad"
@@ -1554,4 +1571,6 @@ const styles = StyleSheet.create({
     marginLeft: I18nManager.isRTL ? 0 : 4,
     marginRight: I18nManager.isRTL ? 4 : 0,
   },
+});
+    task.on('state_changed', null, reject, () => resolve());
 });
