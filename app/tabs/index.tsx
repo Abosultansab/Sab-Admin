@@ -18,7 +18,7 @@ import {
   AlertCircle,
   Folder,
   Tag,
-} from 'lucide-react-native';
+} from '@/components/lucide-shim';
 import { useQuery } from '@tanstack/react-query';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/config/firebase';

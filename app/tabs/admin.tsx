@@ -48,7 +48,7 @@ import {
   ShoppingCart,
   ArrowUp,
   ArrowDown,
-} from 'lucide-react-native';
+} from '@/components/lucide-shim';
 
 const ORDER_WORKFLOW: {
   value: OrderStatus;

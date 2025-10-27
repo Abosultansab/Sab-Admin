@@ -29,7 +29,7 @@ import {
   Filter,
   ChevronLeft,
   AlertCircle,
-} from 'lucide-react-native';
+} from '@/components/lucide-shim';
 import { Stack, useRouter } from 'expo-router';
 
 const LOG_TYPE_CONFIG: {

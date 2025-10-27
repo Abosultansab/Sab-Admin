@@ -17,7 +17,7 @@ import {
   RefreshControl,
   Animated,
 } from 'react-native';
-import { Plus, Search, Tag, Edit, Trash2, X, Upload } from 'lucide-react-native';
+import { Plus, Search, Tag, Edit, Trash2, X, Upload } from '@/components/lucide-shim';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';

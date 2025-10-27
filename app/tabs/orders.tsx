@@ -12,7 +12,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { ShoppingCart, ChevronRight, X, Package as PackageIcon, Truck, CheckCircle, XCircle, FileCheck, ChefHat, Building2, MapPin, AlertCircle, DollarSign, Mail, Phone, Navigation } from 'lucide-react-native';
+import { ShoppingCart, ChevronRight, X, Package as PackageIcon, Truck, CheckCircle, XCircle, FileCheck, ChefHat, Building2, MapPin, AlertCircle, DollarSign, Mail, Phone, Navigation } from '@/components/lucide-shim';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { collection, getDocs, updateDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/config/firebase';

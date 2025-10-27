@@ -28,7 +28,7 @@ import {
   Sun,
   Camera,
   Edit,
-} from 'lucide-react-native';
+} from '@/components/lucide-shim';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';

@@ -16,7 +16,7 @@ import {
   RefreshControl,
   Image,
 } from 'react-native';
-import { Plus, Folder, Edit, Trash2, X, ChevronDown, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react-native';
+import { Plus, Folder, Edit, Trash2, X, ChevronDown, ChevronRight, ArrowUp, ArrowDown } from '@/components/lucide-shim';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, setDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Lock, Mail, Eye, EyeOff } from 'lucide-react-native';
+import { Lock, Mail, Eye, EyeOff } from '@/components/lucide-shim';
 import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
 import Colors from '@/constants/colors';

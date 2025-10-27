@@ -13,7 +13,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { Users, Search, UserCheck, UserX, Shield, X, Mail, Phone, RefreshCw } from 'lucide-react-native';
+import { Users, Search, UserCheck, UserX, Shield, X, Mail, Phone, RefreshCw } from '@/components/lucide-shim';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/config/firebase';

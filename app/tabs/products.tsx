@@ -16,7 +16,7 @@ import {
   RefreshControl,
   Platform,
 } from 'react-native';
-import { Plus, Search, Package, Edit, Trash2, X, Upload, ChevronDown, Palette } from 'lucide-react-native';
+import { Plus, Search, Package, Edit, Trash2, X, Upload, ChevronDown, Palette } from '@/components/lucide-shim';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
