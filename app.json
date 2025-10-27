@@ -27,13 +27,20 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.sabstore-admin-panel",
+      "package": "com.rork.sabstoreadminpanel",
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.SCHEDULE_EXACT_ALARM"
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -75,7 +82,19 @@
       "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "sab-store-9b947.appspot.com",
       "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "263235150197",
       "EXPO_PUBLIC_FIREBASE_APP_ID": "1:263235150197:web:3519534187b75d9006b33c",
-      "EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-1ZPF2J52WZ"
+      "EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-1ZPF2J52WZ",
+      "router": {
+        "origin": "https://rork.com/"
+      },
+      "eas": {
+        "projectId": "45db0288-203a-4779-8f16-858531d23684"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/45db0288-203a-4779-8f16-858531d23684"
     }
   }
 }
