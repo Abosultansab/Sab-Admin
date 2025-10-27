@@ -1,0 +1,73 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is admin
+    // Note: This checks the Firestore database, so make sure the admins collection exists
+    function isAdmin() {
+      return request.auth != null && 
+        exists(/databases/(default)/documents/admins/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Helper function to validate image
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // Products images - read for all, write for authenticated users (will verify admin in app)
+    // Changed temporarily to help debug - authenticated users can upload
+    match /products/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && 
+        isValidImage() &&
+        request.resource.size < 10 * 1024 * 1024; // 10MB limit
+    }
+    
+    // Brands images - read for all, write for authenticated users
+    match /brands/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && 
+        isValidImage() &&
+        request.resource.size < 5 * 1024 * 1024; // 5MB limit
+    }
+    
+    // Categories images - read for all, write for authenticated users
+    match /categories/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && 
+        isValidImage() &&
+        request.resource.size < 5 * 1024 * 1024; // 5MB limit
+    }
+    
+    // User avatars - users can upload their own avatar
+    match /users/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && 
+        request.auth.uid == userId && 
+        isValidImage() &&
+        request.resource.size < 5 * 1024 * 1024; // 5MB limit
+    }
+    
+    // Order related images - authenticated users can upload
+    match /orders/{orderId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+        isValidImage() &&
+        request.resource.size < 5 * 1024 * 1024; // 5MB limit
+    }
+    
+    // Reviews images - authenticated users can upload
+    match /reviews/{reviewId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && 
+        isValidImage() &&
+        request.resource.size < 3 * 1024 * 1024; // 3MB limit
+    }
+  }
+}
