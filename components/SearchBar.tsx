@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TextInput, StyleSheet, I18nManager } from 'react-native';
-import { Search } from 'lucide-react-native';
+import { Search } from '@/components/lucide-shim';
 import Colors from '@/constants/colors';
 import Theme from '@/constants/theme';
 
