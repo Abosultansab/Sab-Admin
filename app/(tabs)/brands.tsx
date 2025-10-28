@@ -1,3 +1,4 @@
+import { fetchSignedUrl, uploadFileWithSignedUrl } from '../index.esm';
 import React, { useState } from 'react';
 import {
   View,
@@ -20,12 +21,10 @@ import {
 import { Plus, Search, Tag, Edit, Trash2, X, Upload } from '@/components/lucide-shim';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { ref, uploadFileWithSignedUrl, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
-import { db, storage } from '@/config/firebase';
+import { db } from '@/config/firebase';
 import Colors from '@/constants/colors';
 import { Brand } from '@/types';
-import * as FileSystem from 'expo-file-system/legacy';
 
 export default function BrandsScreen() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -127,22 +126,17 @@ export default function BrandsScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      await uploadImageSignedUrl(result.assets[0].uri);
+      await uploadImage(result.assets[0].uri);
     }
   };
 
-  const uploadImageSignedUrl = async (uri: string) => {
+  const uploadImage = async (uri: string) => {
+
     setUploading(true);
     try {
       console.log('[Upload] Reading file as base64...');
-const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
 console.log('[Upload] Base64 length:', base64.length);
-await uploadFileWithSignedUrl(storageRef, base64, 'base64', {
-  contentType: 'image/jpeg',
-  cacheControl: 'public,max-age=31536000',
 });
-      const downloadURL = await getDownloadURL(storageRef);
-      
       setFormData((prev) => ({
         ...prev,
         logo: downloadURL,

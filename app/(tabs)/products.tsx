@@ -1,3 +1,4 @@
+import { fetchSignedUrl, uploadFileWithSignedUrl } from '../index.esm';
 import React, { useState } from 'react';
 import {
   View,
@@ -20,13 +21,11 @@ import { Plus, Search, Package, Edit, Trash2, X, Upload, ChevronDown, Palette } 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { ref, uploadFileWithSignedUrl, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
-import { auth, db, storage } from '@/config/firebase';
+import { auth, db } from '@/config/firebase';
 import Colors from '@/constants/colors';
 import { Product, Category, Brand, ProductSize, ProductColor } from '@/types';
 import { PRODUCT_COLORS } from '@/constants/productColors';
-import * as FileSystem from 'expo-file-system/legacy';
 
 export default function ProductsScreen() {
   const router = useRouter();
@@ -252,7 +251,7 @@ export default function ProductsScreen() {
 
       if (!result.canceled && result.assets[0]) {
         setSelectedImageUri(result.assets[0].uri);
-        await uploadImageSignedUrl(result.assets[0].uri);
+        await uploadImage(result.assets[0].uri);
       }
     } catch (error: any) {
       console.error('[ProductsScreen] Image picker error:', error);
@@ -260,7 +259,8 @@ export default function ProductsScreen() {
     }
   };
 
-  const uploadImageSignedUrl = async (uri: string) => {
+  const uploadImage = async (uri: string) => {
+
     setUploading(true);
     console.log('[ProductsScreen] Starting image upload...');
     console.log('[ProductsScreen] Image URI:', uri);
@@ -276,19 +276,10 @@ export default function ProductsScreen() {
       const timestamp = Date.now();
       // extension forced to jpg || 'jpg';
       const filename = `products/${timestamp}_product.jpg`;
-      const storageRef = ref(storage, filename);
-      
       console.log('[ProductsScreen] Uploading to path:', filename);
       console.log('[Upload] Reading file as base64...');
-const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
 console.log('[Upload] Base64 length:', base64.length);
-await uploadFileWithSignedUrl(storageRef, base64, 'base64', {
-  contentType: 'image/jpeg',
-  cacheControl: 'public,max-age=31536000',
-});
-      console.log('[ProductsScreen] Upload complete, getting download URL...');
-      
-      const downloadURL = await getDownloadURL(storageRef);
+};
       console.log('[ProductsScreen] Download URL obtained:', downloadURL);
       
       setFormData((prev) => ({

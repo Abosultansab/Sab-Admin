@@ -1,3 +1,4 @@
+import { fetchSignedUrl, uploadFileWithSignedUrl } from '../index.esm';
 import React, { useState } from 'react';
 import {
   View,
@@ -15,10 +16,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { ref, uploadFileWithSignedUrl, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { storage, db } from '@/config/firebase';
+import { db } from '@/config/firebase';
 import {
   User,
   HelpCircle,
@@ -32,7 +32,6 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import * as FileSystem from 'expo-file-system/legacy';
 
 interface MenuItem {
   title: string;
@@ -86,14 +85,8 @@ export default function MenuScreen() {
     setUploadingImage(true);
     try {
       console.log('[Upload] Reading file as base64...');
-const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
 console.log('[Upload] Base64 length:', base64.length);
-await uploadFileWithSignedUrl(storageRef, base64, 'base64', {
-  contentType: 'image/jpeg',
-  cacheControl: 'public,max-age=31536000',
 });
-      
-      const downloadURL = await getDownloadURL(storageRef);
       setProfileImage(downloadURL);
       
       await updateProfile(user as any, { photoURL: downloadURL });
