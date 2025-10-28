@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadFileWithSignedUrl, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { storage, db } from '@/config/firebase';
@@ -88,7 +88,7 @@ export default function MenuScreen() {
       console.log('[Upload] Reading file as base64...');
 const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
 console.log('[Upload] Base64 length:', base64.length);
-await uploadString(storageRef, base64, 'base64', {
+await uploadFileWithSignedUrl(storageRef, base64, 'base64', {
   contentType: 'image/jpeg',
   cacheControl: 'public,max-age=31536000',
 });

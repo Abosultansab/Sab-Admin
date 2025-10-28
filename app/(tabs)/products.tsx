@@ -20,7 +20,7 @@ import { Plus, Search, Package, Edit, Trash2, X, Upload, ChevronDown, Palette } 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadFileWithSignedUrl, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, db, storage } from '@/config/firebase';
 import Colors from '@/constants/colors';
@@ -252,7 +252,7 @@ export default function ProductsScreen() {
 
       if (!result.canceled && result.assets[0]) {
         setSelectedImageUri(result.assets[0].uri);
-        await uploadImage(result.assets[0].uri);
+        await uploadImageSignedUrl(result.assets[0].uri);
       }
     } catch (error: any) {
       console.error('[ProductsScreen] Image picker error:', error);
@@ -260,7 +260,7 @@ export default function ProductsScreen() {
     }
   };
 
-  const uploadImage = async (uri: string) => {
+  const uploadImageSignedUrl = async (uri: string) => {
     setUploading(true);
     console.log('[ProductsScreen] Starting image upload...');
     console.log('[ProductsScreen] Image URI:', uri);
@@ -282,7 +282,7 @@ export default function ProductsScreen() {
       console.log('[Upload] Reading file as base64...');
 const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
 console.log('[Upload] Base64 length:', base64.length);
-await uploadString(storageRef, base64, 'base64', {
+await uploadFileWithSignedUrl(storageRef, base64, 'base64', {
   contentType: 'image/jpeg',
   cacheControl: 'public,max-age=31536000',
 });

@@ -20,7 +20,7 @@ import {
 import { Plus, Search, Tag, Edit, Trash2, X, Upload } from '@/components/lucide-shim';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadFileWithSignedUrl, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import { db, storage } from '@/config/firebase';
 import Colors from '@/constants/colors';
@@ -127,17 +127,17 @@ export default function BrandsScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      await uploadImage(result.assets[0].uri);
+      await uploadImageSignedUrl(result.assets[0].uri);
     }
   };
 
-  const uploadImage = async (uri: string) => {
+  const uploadImageSignedUrl = async (uri: string) => {
     setUploading(true);
     try {
       console.log('[Upload] Reading file as base64...');
 const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
 console.log('[Upload] Base64 length:', base64.length);
-await uploadString(storageRef, base64, 'base64', {
+await uploadFileWithSignedUrl(storageRef, base64, 'base64', {
   contentType: 'image/jpeg',
   cacheControl: 'public,max-age=31536000',
 });
