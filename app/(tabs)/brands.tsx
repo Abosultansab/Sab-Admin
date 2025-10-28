@@ -38,6 +38,7 @@ export default function BrandsScreen() {
     description: '',
     descriptionAr: '',
   });
+
   const [uploading, setUploading] = useState<boolean>(false);
 
   const queryClient = useQueryClient();
@@ -57,15 +58,12 @@ export default function BrandsScreen() {
         ...doc.data(),
       })) as Brand[];
     },
-  });
-
   const addBrandMutation = useMutation({
     mutationFn: async (brand: Partial<Brand>) => {
       const docRef = await addDoc(collection(db, 'brands'), {
         ...brand,
         createdAt: new Date(),
         updatedAt: new Date(),
-      });
       return docRef.id;
     },
     onSuccess: () => {
@@ -77,14 +75,11 @@ export default function BrandsScreen() {
     onError: (error: any) => {
       Alert.alert('خطأ - Error', error.message);
     },
-  });
-
   const updateBrandMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Brand> }) => {
       await updateDoc(doc(db, 'brands', id), {
         ...data,
         updatedAt: new Date(),
-      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['brands'] });
@@ -95,8 +90,6 @@ export default function BrandsScreen() {
     onError: (error: any) => {
       Alert.alert('خطأ - Error', error.message);
     },
-  });
-
   const deleteBrandMutation = useMutation({
     mutationFn: async (id: string) => {
       await deleteDoc(doc(db, 'brands', id));
@@ -108,8 +101,6 @@ export default function BrandsScreen() {
     onError: (error: any) => {
       Alert.alert('خطأ - Error', error.message);
     },
-  });
-
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
@@ -123,8 +114,6 @@ export default function BrandsScreen() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
-    });
-
     if (!result.canceled && result.assets[0]) {
       await uploadImage(result.assets[0].uri);
     }
@@ -132,11 +121,14 @@ export default function BrandsScreen() {
 
   const uploadImage = async (uri: string) => {
 
+async function fetchSignedUrl(): Promise<string> {
+  const response = await fetch('http://localhost:3000/get-signed-url');
+  const data = await response.json();
+  return data.signedUrl;
+}
     setUploading(true);
     try {
-      console.log('[Upload] Reading file as base64...');
 console.log('[Upload] Base64 length:', base64.length);
-});
       setFormData((prev) => ({
         ...prev,
         logo: downloadURL,
@@ -156,7 +148,6 @@ console.log('[Upload] Base64 length:', base64.length);
       logo: '',
       description: '',
       descriptionAr: '',
-    });
     setEditingBrand(null);
   };
 
@@ -669,4 +660,3 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: Colors.white,
   },
-});

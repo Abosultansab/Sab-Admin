@@ -68,8 +68,6 @@ export default function MenuScreen() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.7,
-      });
-
       if (!result.canceled && result.assets[0]) {
         await uploadProfileImage(result.assets[0].uri);
       }
@@ -84,17 +82,12 @@ export default function MenuScreen() {
     
     setUploadingImage(true);
     try {
-      console.log('[Upload] Reading file as base64...');
-console.log('[Upload] Base64 length:', base64.length);
-});
       setProfileImage(downloadURL);
       
       await updateProfile(user as any, { photoURL: downloadURL });
       await updateDoc(doc(db, 'admins', user.uid), {
         photoURL: downloadURL,
         updatedAt: new Date(),
-      });
-      
       Alert.alert(
         'نجح - Success',
         'تم تحديث صورة الملف الشخصي - Profile photo updated successfully'
@@ -116,8 +109,6 @@ console.log('[Upload] Base64 length:', base64.length);
       await updateDoc(doc(db, 'admins', user.uid), {
         displayName: editedName,
         updatedAt: new Date(),
-      });
-      
       setShowProfileModal(false);
       Alert.alert(
         'نجح - Success',
@@ -200,7 +191,6 @@ console.log('[Upload] Base64 length:', base64.length);
                 'خطأ - Error',
                 'تعذر فتح واتساب - Unable to open WhatsApp'
               );
-            });
           },
         },
       ],
@@ -551,4 +541,3 @@ const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: I18nManager.isRTL ? 'right' : 'left',
   },
-});

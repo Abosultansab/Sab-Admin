@@ -51,7 +51,6 @@ export default function ProductsScreen() {
     isFeatured: false,
     deliveryTime: '',
     rate: 0,
-  });
   const [uploading, setUploading] = useState<boolean>(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string>('');
   const [showCategoryPicker, setShowCategoryPicker] = useState<boolean>(false);
@@ -75,8 +74,6 @@ export default function ProductsScreen() {
     queryKey: ['products'],
     queryFn: () => [] as Product[],
     staleTime: Infinity,
-  });
-
   React.useEffect(() => {
     console.log('[ProductsScreen] Setting up real-time listener for products');
     
@@ -107,8 +104,6 @@ export default function ProductsScreen() {
     queryKey: ['categories'],
     queryFn: () => [] as Category[],
     staleTime: Infinity,
-  });
-
   React.useEffect(() => {
     console.log('[ProductsScreen] Setting up real-time listener for categories');
     
@@ -144,8 +139,6 @@ export default function ProductsScreen() {
     queryKey: ['brands'],
     queryFn: () => [] as Brand[],
     staleTime: Infinity,
-  });
-
   React.useEffect(() => {
     console.log('[ProductsScreen] Setting up real-time listener for brands');
     
@@ -182,8 +175,6 @@ export default function ProductsScreen() {
         ...product,
         createdAt: new Date(),
         updatedAt: new Date(),
-      });
-      
       console.log('[ProductsScreen] Product added with ID:', docRef.id);
       return docRef.id;
     },
@@ -197,14 +188,11 @@ export default function ProductsScreen() {
       console.error('[ProductsScreen] Add error:', error);
       Alert.alert('خطأ - Error', error.message);
     },
-  });
-
   const updateProductMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Product> }) => {
       await updateDoc(doc(db, 'products', id), {
         ...data,
         updatedAt: new Date(),
-      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
@@ -216,8 +204,6 @@ export default function ProductsScreen() {
       console.error('[ProductsScreen] Update error:', error);
       Alert.alert('خطأ - Error', error.message);
     },
-  });
-
   const deleteProductMutation = useMutation({
     mutationFn: async (id: string) => {
       await deleteDoc(doc(db, 'products', id));
@@ -230,8 +216,6 @@ export default function ProductsScreen() {
       console.error('[ProductsScreen] Delete error:', error);
       Alert.alert('خطأ - Error', error.message);
     },
-  });
-
   const pickImage = async () => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -247,8 +231,6 @@ export default function ProductsScreen() {
         aspect: [1, 1],
         quality: 0.8,
         allowsMultipleSelection: false,
-      });
-
       if (!result.canceled && result.assets[0]) {
         setSelectedImageUri(result.assets[0].uri);
         await uploadImage(result.assets[0].uri);
@@ -259,27 +241,29 @@ export default function ProductsScreen() {
     }
   };
 
-  const uploadImage = async (uri: string) => {
-
-    setUploading(true);
-    console.log('[ProductsScreen] Starting image upload...');
-    console.log('[ProductsScreen] Image URI:', uri);
-    console.log('[ProductsScreen] Current user:', auth.currentUser?.uid);
-    console.log('[ProductsScreen] Storage bucket:', storage.app.options.storageBucket);
-    console.log('[ProductsScreen] Platform:', Platform.OS);
-    
-    try {
-      if (!auth.currentUser) {
-        throw new Error('يجب تسجيل الدخول أولاً - You must be signed in to upload images');
-      }
-
-      const timestamp = Date.now();
-      // extension forced to jpg || 'jpg';
-      const filename = `products/${timestamp}_product.jpg`;
-      console.log('[ProductsScreen] Uploading to path:', filename);
-      console.log('[Upload] Reading file as base64...');
-console.log('[Upload] Base64 length:', base64.length);
+  
+const uploadImage = async (uri: string) => {
+  setUploading(true);
+  console.log('[ProductsScreen] Starting image upload...');
+  try {
+    if (!auth.currentUser) { throw new Error('يجب تسجيل الدخول أولاً - You must be signed in to upload images'); }
+    const contentType = 'image/jpeg';
+    const fileName = `products/${auth.currentUser.uid}-${Date.now()}.jpg`;
+    const { uploadUrl, publicUrl } = await fetchSignedUrl({ fileName, contentType, folder: 'products' });
+    await uploadFileWithSignedUrl(uri, uploadUrl, contentType);
+    const url = publicUrl || '';
+    setFormData((prev) => ({ ...prev, images: [...(prev.images || []), url] }));
+    setSelectedImageUri('');
+    Alert.alert('نجح - Success', 'تم رفع الصورة بنجاح - Image uploaded successfully');
+  } catch (error) {
+    console.error('[ProductsScreen] Upload error:', error);
+    Alert.alert('خطأ - Error', 'فشل رفع الصورة - Failed to upload image');
+  } finally {
+    setUploading(false);
+  }
 };
+
+      console.log('[ProductsScreen] Upload complete, getting download URL...');
       console.log('[ProductsScreen] Download URL obtained:', downloadURL);
       
       setFormData((prev) => ({
@@ -296,8 +280,6 @@ console.log('[Upload] Base64 length:', base64.length);
         code: error.code,
         message: error.message,
         stack: error.stack,
-      });
-      
       if (error.serverResponse) {
         console.error('[ProductsScreen] Server response:', error.serverResponse);
       }
@@ -353,7 +335,6 @@ console.log('[Upload] Base64 length:', base64.length);
       isFeatured: false,
       deliveryTime: '',
       rate: 0,
-    });
     setEditingProduct(null);
   };
 
@@ -856,7 +837,6 @@ console.log('[Upload] Base64 length:', base64.length);
                         selectedColors: JSON.stringify(formData.colors || []),
                         onSelect: callbackId,
                       },
-                    });
                   }}
                   testID="choose-color-button"
                 >
@@ -1500,4 +1480,3 @@ const styles = StyleSheet.create({
     marginLeft: I18nManager.isRTL ? 0 : 4,
     marginRight: I18nManager.isRTL ? 4 : 0,
   },
-});
